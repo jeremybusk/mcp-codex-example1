@@ -41,6 +41,9 @@ services:
     networks: [backend]
 
   opencode:
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY:?Set OPENAI_API_KEY in .env}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:?Set OPENAI_BASE_URL in .env}
     build:
       context: .
       dockerfile: Dockerfile.opencode
