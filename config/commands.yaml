@@ -65,3 +65,16 @@ commands:
     risk: read
     confirmation: false
     argv: ["/usr/bin/pgrep", "-a", "-u", "postgres"]
+
+  bash:
+    enabled: false
+    description: Run an arbitrary Bash script. This permits unrestricted remote execution.
+    risk: write
+    confirmation: true
+    argv: ["/usr/bin/bash", "-lc", "{script}"]
+    timeout: 120
+    parameters:
+      script:
+        type: string
+        max_length: 4000
+        pattern: '(?s)^.+$'
