@@ -40,5 +40,46 @@ services:
       - ./config/codex.toml:/opt/codex/config.toml:ro
     networks: [backend]
 
+  web-ui:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    restart: unless-stopped
+    environment:
+      MCP_URL: http://mcp-server:8000/mcp
+      WEB_SESSION_SECRET: ${WEB_SESSION_SECRET:?Set WEB_SESSION_SECRET in .env}
+      AUDIT_PATH: /data/audit.jsonl
+    volumes:
+      - ./data/web:/data
+    depends_on:
+      mcp-server:
+        condition: service_healthy
+    expose:
+      - "8080"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8080/healthz',timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks: [backend]
+
+  web-gateway:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    environment:
+      WEB_HOST: ${WEB_HOST:-localhost}
+      WEB_USERNAME: ${WEB_USERNAME:-admin}
+      WEB_PASSWORD_HASH: ${WEB_PASSWORD_HASH:?Set WEB_PASSWORD_HASH in .env}
+    ports:
+      - "${WEB_BIND_ADDRESS:-127.0.0.1}:${WEB_PORT:-8443}:8443"
+    volumes:
+      - ./config/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./data/caddy/data:/data
+      - ./data/caddy/config:/config
+    depends_on:
+      web-ui:
+        condition: service_healthy
+    networks: [backend]
+
 networks:
   backend:

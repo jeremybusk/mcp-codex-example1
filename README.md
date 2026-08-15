@@ -5,6 +5,7 @@ A small Docker Compose stack containing:
 - a private MCP server with bounded, read-only PostgreSQL queries;
 - YAML-allowlisted commands executed on one Linux host over SSH; and
 - Codex CLI with persistent authentication, configuration, and conversation state.
+- an HTTPS web console for executing the same allowlisted commands without Codex.
 
 The MCP port is only available on the Compose network (it is not published to the host). The network retains outbound access so the MCP container can reach SSH and PostgreSQL targets. Remote commands use fixed argv templates, typed parameters, strict host-key checking, and no user-supplied shell command.
 
@@ -28,6 +29,38 @@ docker compose exec codex codex
 Set the real host and database values in `.env`. `SSH_KEY_FILE` and `SSH_KNOWN_HOSTS_FILE` are host paths and default to files in `./.ssh`. Verify the SSH fingerprint out of band before trusting the `ssh-keyscan` result.
 
 Codex state is bind-mounted at `./data/codex`, including its login and local session history. The working directory is `./workspace`. Both are gitignored and survive container replacement.
+
+## Web command console
+
+The browser UI talks to the MCP server as an MCP client; it does not execute commands itself. Caddy is the only published service and provides HTTPS plus hashed basic authentication.
+
+Before first startup, generate credentials and put them in `.env`:
+
+```sh
+docker run --rm caddy:2.10-alpine caddy hash-password --plaintext 'choose-a-long-password'
+openssl rand -hex 32
+```
+
+Save the first output as `WEB_PASSWORD_HASH` and the second as `WEB_SESSION_SECRET`. Compose defaults to `WEB_USERNAME=admin` and binds to localhost only:
+
+```text
+https://localhost:8443
+```
+
+Caddy uses its private CA for local HTTPS. Trust `./data/caddy/data/caddy/pki/authorities/local/root.crt` on client devices, or accept the browser warning for testing. To allow other LAN devices, set both `WEB_BIND_ADDRESS` and `WEB_HOST` to the Docker host's specific LAN IP (or set `WEB_HOST` to its DNS name)—not `0.0.0.0` unless every attached network is intended. A VPN address is preferable for remote access.
+
+The UI generates typed controls from `commands.yaml`, displays raw stdout/stderr, requires exact-name confirmation for commands whose `confirmation` is true, uses strict CSRF/session cookies, and appends audit metadata to `./data/web/audit.jsonl`. Output itself is deliberately not written to the audit log.
+
+Policy metadata defaults conservatively to `risk: write` and `confirmation: true`. Mark reviewed read-only commands explicitly:
+
+```yaml
+  uptime:
+    enabled: true
+    risk: read
+    confirmation: false
+    description: Show server uptime and load.
+    argv: ["/usr/bin/uptime"]
+```
 
 ## Command policy
 

@@ -13,16 +13,22 @@ commands:
   uptime:
     enabled: true
     description: Show server uptime and load.
+    risk: read
+    confirmation: false
     argv: ["/usr/bin/uptime"]
 
   disk_usage:
     enabled: true
     description: Show filesystem free space.
+    risk: read
+    confirmation: false
     argv: ["/usr/bin/df", "-h", "--output=source,fstype,size,used,avail,pcent,target"]
 
   service_status:
     enabled: true
     description: Show status for one explicitly permitted systemd service.
+    risk: read
+    confirmation: false
     argv: ["/usr/bin/sudo", "-n", "/usr/bin/systemctl", "status", "{service}", "--no-pager"]
     timeout: 20
     parameters:
@@ -33,6 +39,8 @@ commands:
   journal:
     enabled: false
     description: Read recent logs for an explicitly permitted service.
+    risk: read
+    confirmation: false
     argv: ["/usr/bin/sudo", "-n", "/usr/bin/journalctl", "-u", "{service}", "-n", "{lines}", "--no-pager"]
     parameters:
       service:
@@ -47,9 +55,13 @@ commands:
   process_list:
     enabled: true
     description: List all processes with full details.
+    risk: read
+    confirmation: false
     argv: ["/usr/bin/ps", "-eaf"]
 
   postgres_processes:
     enabled: true
     description: List PostgreSQL processes.
+    risk: read
+    confirmation: false
     argv: ["/usr/bin/pgrep", "-a", "-u", "postgres"]

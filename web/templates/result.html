@@ -1,0 +1,7 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{ command }} result</title><link rel="stylesheet" href="/static/app.css"></head>
+<body><main><p><a href="/">← Commands</a></p><h1>{{ command }}</h1>
+<div class="status"><b>Exit code:</b> {{ result.exit_code }} {% if result.truncated %}<span class="risk write">truncated</span>{% endif %}</div>
+<h2>stdout</h2><pre>{{ result.stdout }}</pre><h2>stderr</h2><pre class="stderr">{{ result.stderr }}</pre>
+</main></body></html>

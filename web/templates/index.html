@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Infra Commands</title><link rel="stylesheet" href="/static/app.css"></head>
+<body><main><header><div><h1>Infra Commands</h1><p>Signed in as {{ user }}</p></div></header>
+{% if error %}<div class="error">MCP unavailable: {{ error }}</div>{% endif %}
+<section class="grid">
+{% for command in commands %}
+<form method="post" action="/run" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf }}"><input type="hidden" name="command" value="{{ command.name }}">
+  <div class="title"><h2>{{ command.name }}</h2><span class="risk {{ command.risk }}">{{ command.risk }}</span></div>
+  <p>{{ command.description }}</p>
+  {% for name, rule in command.parameters.items() %}
+    <label for="{{ command.name }}_{{ name }}">{{ name }}</label>
+    {% if rule["type"] == "enum" %}
+      <select id="{{ command.name }}_{{ name }}" name="param_{{ name }}">
+      {% for value in rule["values"] %}<option value="{{ value }}" {% if value == rule.get("default") %}selected{% endif %}>{{ value }}</option>{% endfor %}
+      </select>
+    {% elif rule["type"] == "integer" %}
+      <input id="{{ command.name }}_{{ name }}" name="param_{{ name }}" type="number" min="{{ rule.get('min', '') }}" max="{{ rule.get('max', '') }}" value="{{ rule.get('default', '') }}" {% if "default" not in rule %}required{% endif %}>
+    {% else %}
+      <input id="{{ command.name }}_{{ name }}" name="param_{{ name }}" value="{{ rule.get('default', '') }}" {% if "default" not in rule %}required{% endif %}>
+    {% endif %}
+  {% endfor %}
+  {% if command.confirmation %}<label>Type <code>{{ command.name }}</code> to confirm</label><input name="confirmed" autocomplete="off" required>{% endif %}
+  <button type="submit">Run command</button>
+</form>
+{% else %}<p>No commands are currently enabled.</p>{% endfor %}
+</section></main></body></html>

@@ -1,0 +1,8 @@
+https://{$WEB_HOST:localhost}:8443 {
+    tls internal
+    basic_auth {
+        {$WEB_USERNAME} {$WEB_PASSWORD_HASH}
+    }
+    request_header X-Authenticated-User {http.auth.user.id}
+    reverse_proxy web-ui:8080
+}

@@ -124,6 +124,8 @@ def list_commands() -> list[dict[str, Any]]:
                 "name": name,
                 "description": item.get("description", ""),
                 "parameters": item.get("parameters", {}),
+                "risk": item.get("risk", "write"),
+                "confirmation": item.get("confirmation", True),
             })
     return result
 

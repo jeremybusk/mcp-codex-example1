@@ -1,0 +1,17 @@
+FROM python:3.12-slim
+WORKDIR /app
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends gosu \
+    && rm -rf /var/lib/apt/lists/*
+COPY web/requirements.txt ./requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+COPY web/app.py ./app.py
+COPY web/templates ./templates
+COPY web/static ./static
+COPY docker/web-entrypoint.sh /usr/local/bin/web-entrypoint
+RUN mkdir /data \
+    && chown -R 65532:65532 /app /data \
+    && chmod 755 /usr/local/bin/web-entrypoint
+EXPOSE 8080
+ENTRYPOINT ["web-entrypoint"]
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8080", "--proxy-headers", "--forwarded-allow-ips", "*"]

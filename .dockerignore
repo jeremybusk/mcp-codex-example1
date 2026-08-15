@@ -3,5 +3,6 @@
 .ssh
 data
 workspace
+data
 __pycache__
 *.pyc
