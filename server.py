@@ -5,6 +5,9 @@ import os
 import re
 import shlex
 import subprocess
+import urllib.error
+import urllib.request
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -24,6 +27,9 @@ SSH_PORT = int(os.getenv("SSH_PORT", "22"))
 SSH_USER = os.getenv("SSH_USER", "ubuntu")
 SSH_KEY = os.getenv("SSH_KEY", "/run/secrets/ssh_key")
 SSH_KNOWN_HOSTS = os.getenv("SSH_KNOWN_HOSTS", "/app/ssh/known_hosts")
+QUICKWIT_URL = os.getenv("QUICKWIT_URL", "").rstrip("/")
+CHAT_INDEX_ID = os.getenv("CHAT_INDEX_ID", "chat-history-v1")
+CHAT_HISTORY_OWNER = os.getenv("CHAT_HISTORY_OWNER", "local")
 
 mcp = FastMCP(
     "infra-mcp",
@@ -114,6 +120,54 @@ def ssh_argv(remote_argv: list[str]) -> list[str]:
     ]
 
 
+def _query_term(value: str) -> str:
+    """Quote an exact metadata term for Quickwit's query parser."""
+    return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
+def _chat_search(query: str, source: str = "", role: str = "", session_id: str = "",
+                 since: str = "", limit: int = 20) -> dict[str, Any]:
+    if not QUICKWIT_URL:
+        raise ValueError("chat history search is not configured")
+    if not query or len(query) > 1000:
+        raise ValueError("query must contain 1 to 1000 characters")
+    if not 1 <= int(limit) <= 50:
+        raise ValueError("limit must be between 1 and 50")
+    for name, value in (("source", source), ("session_id", session_id)):
+        if value and (len(value) > 160 or not re.fullmatch(r"[A-Za-z0-9._:/@+-]+", value)):
+            raise ValueError(f"invalid {name}")
+    if role and role not in {"user", "assistant"}:
+        raise ValueError("role must be user or assistant")
+
+    # Quote user text so it cannot inject field filters or expensive query operators.
+    text_clause = "text:*" if query == "*" else f"text:{_query_term(query)}"
+    clauses = [f"owner:{_query_term(CHAT_HISTORY_OWNER)}", text_clause]
+    if source: clauses.append(f"source:{_query_term(source)}")
+    if role: clauses.append(f"role:{_query_term(role)}")
+    if session_id: clauses.append(f"session_id:{_query_term(session_id)}")
+    payload: dict[str, Any] = {
+        "query": " AND ".join(clauses), "max_hits": int(limit),
+        "sort_by": "-timestamp", "snippet_fields": "text",
+    }
+    if since:
+        try:
+            payload["start_timestamp"] = int(datetime.fromisoformat(since.replace("Z", "+00:00")).timestamp())
+        except ValueError as exc:
+            raise ValueError("since must be an ISO-8601 timestamp") from exc
+    request = urllib.request.Request(
+        f"{QUICKWIT_URL}/api/v1/{CHAT_INDEX_ID}/search",
+        data=json.dumps(payload).encode(), headers={"Content-Type": "application/json"}, method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=15) as response:
+            result = json.load(response)
+    except urllib.error.HTTPError as exc:
+        detail = exc.read(1000).decode("utf-8", "replace")
+        raise RuntimeError(f"chat search failed ({exc.code}): {detail}") from exc
+    hits = result.get("hits", [])
+    return {"count": len(hits), "elapsed_micros": result.get("elapsed_time_micros"), "hits": hits}
+
+
 @mcp.tool()
 def list_commands() -> list[dict[str, Any]]:
     """List enabled remote commands and their accepted parameters."""
@@ -174,6 +228,19 @@ def query_postgres(sql: str) -> dict[str, Any]:
             if len(rows) > max_rows:
                 raise ValueError(f"query exceeds the {max_rows}-row limit")
             return {"row_count": len(rows), "rows": json.loads(json.dumps(rows, default=str))}
+
+
+@mcp.tool()
+def search_chat_history(query: str, source: str = "", role: str = "", since: str = "",
+                        limit: int = 20) -> dict[str, Any]:
+    """Search this MCP identity's redacted Codex/OpenCode chat text. Source examples: codex-local, opencode-local."""
+    return _chat_search(query=query, source=source, role=role, since=since, limit=limit)
+
+
+@mcp.tool()
+def get_chat_session(session_id: str, source: str = "", limit: int = 50) -> dict[str, Any]:
+    """Return recent indexed user/assistant messages for one exact chat session ID."""
+    return _chat_search(query="*", source=source, session_id=session_id, limit=limit)
 
 
 if __name__ == "__main__":

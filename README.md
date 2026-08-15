@@ -7,6 +7,7 @@ A small Docker Compose stack containing:
 - Codex CLI with persistent authentication, configuration, and conversation state.
 - OpenCode CLI as an alternative MCP client with persistent configuration and sessions.
 - an HTTPS web console for executing the same allowlisted commands without Codex.
+- private, compressed Quickwit search over normalized Codex and OpenCode conversations.
 
 The MCP port is only available on the Compose network (it is not published to the host). The network retains outbound access so the MCP container can reach SSH and PostgreSQL targets. Remote commands use fixed argv templates, typed parameters, strict host-key checking, and no user-supplied shell command.
 
@@ -30,6 +31,48 @@ docker compose exec codex codex
 Set the real host and database values in `.env`. `SSH_KEY_FILE` and `SSH_KNOWN_HOSTS_FILE` are host paths and default to files in `./.ssh`. Verify the SSH fingerprint out of band before trusting the `ssh-keyscan` result.
 
 Codex state is bind-mounted at `./data/codex`, including its login and local session history. The working directory is `./workspace`. Both are gitignored and survive container replacement.
+
+## Searchable chat history
+
+`quickwit` and `chat-indexer` start with the normal stack. Quickwit is reachable only on the internal `chat_search` network and stores its index in `./data/quickwit`. The importer scans every 30 seconds, keeps its durable deduplication state in `./data/chat-indexer`, and reads agent data with read-only mounts.
+
+The importer deliberately indexes only user and assistant text:
+
+- Codex `response_item/message` input and output text;
+- completed OpenCode `part.type=text` records;
+- source, owner, agent, session, project, role, and timestamp metadata.
+
+Reasoning, tool calls, tool output, account/credential tables, and logs are excluded. Common API keys, bearer tokens, password assignments, and PEM private keys are redacted before ingestion. Redaction is defense in depth—not a guarantee that arbitrary secrets pasted into prose will be recognized—so do not paste credentials into chats.
+
+The existing `infra` MCP server exposes two bounded, read-only tools:
+
+- `search_chat_history(query, source?, role?, since?, limit?)`, with a maximum of 50 hits;
+- `get_chat_session(session_id, source?, limit?)`, also capped at 50 hits.
+
+Example prompts in either Codex or OpenCode:
+
+```text
+Use infra.search_chat_history to find my discussions about Grafana Loki. Search source codex-local and return at most 10 matches.
+
+Use infra.search_chat_history for "docker compose" since 2026-08-01T00:00:00Z. Summarize the relevant decisions and cite each session_id.
+
+Use infra.get_chat_session with session_id <id> and source opencode-local, then summarize that conversation.
+```
+
+Check ingestion without printing private results:
+
+```sh
+docker compose ps quickwit chat-indexer mcp-server
+docker compose logs --tail=50 chat-indexer
+```
+
+### Add users or agent types
+
+Each entry in [config/chat-sources.yaml](config/chat-sources.yaml) has a stable source name, parser type, owner, agent label, and container path. To add another Codex or OpenCode user, add an entry and mount that user's history read-only under `/sources` in the `chat-indexer` service. A source name such as `codex-alice` or `opencode-ci-bot` makes agent filtering unambiguous.
+
+`CHAT_HISTORY_OWNER` is fixed on the MCP server and added to every search, preventing its clients from requesting another configured owner through the tool. This is useful routing and accidental-cross-user protection, but a field filter is not a hard multi-tenant security boundary. For mutually untrusted users, run separate MCP/indexer/Quickwit stacks (or separate indexes plus independently authenticated gateways); never give those users direct Quickwit network access. Quickwit is append-oriented, so changing the parser, redaction policy, or indexed document shape requires choosing a new `CHAT_INDEX_ID` and rebuilding that index.
+
+The index uses Quickwit's level-8 doc-store compression and persists indefinitely by default. To impose a retention window, add a `retention` block to `config/chat-history-index.yaml` before first index creation, then use a new index ID. Removing `./data/quickwit` deletes the searchable copy but not the original Codex/OpenCode histories; removing `./data/chat-indexer` makes the importer forget its deduplication state and must only be done together with the corresponding Quickwit index reset.
 
 ## OpenCode client
 

@@ -1,0 +1,23 @@
+version: 0.8
+index_id: chat-history-v1
+doc_mapping:
+  mode: strict
+  field_mappings:
+    - {name: timestamp, type: datetime, input_formats: [rfc3339], fast: true}
+    - {name: owner, type: text, tokenizer: raw, fast: true}
+    - {name: source, type: text, tokenizer: raw, fast: true}
+    - {name: agent, type: text, tokenizer: raw, fast: true}
+    - {name: session_id, type: text, tokenizer: raw, fast: true}
+    - {name: message_id, type: text, tokenizer: raw}
+    - {name: project, type: text, tokenizer: raw, fast: true}
+    - {name: role, type: text, tokenizer: raw, fast: true}
+    - {name: ordinal, type: u64, fast: true}
+    - {name: text, type: text, tokenizer: default, record: position, fieldnorms: true}
+  tag_fields: [owner, source, agent, role]
+  timestamp_field: timestamp
+search_settings:
+  default_search_fields: [text]
+indexing_settings:
+  commit_timeout_secs: 5
+  docstore_compression_level: 8
+

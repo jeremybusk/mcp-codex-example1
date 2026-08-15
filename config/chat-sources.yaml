@@ -1,0 +1,15 @@
+# Add another named source and a read-only Compose mount to index more users/agents.
+# `owner` is searchable metadata, not a security boundary; use separate stacks/indexes
+# when mutually untrusted users must be isolated.
+sources:
+  codex-local:
+    type: codex
+    owner: local
+    agent: codex
+    path: /sources/codex
+  opencode-local:
+    type: opencode
+    owner: local
+    agent: opencode
+    path: /sources/opencode/.local/share/opencode/opencode.db
+

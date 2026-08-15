@@ -12,6 +12,9 @@ services:
       SSH_KEY: /app/ssh/id_ed25519
       SSH_KNOWN_HOSTS: /app/ssh/known_hosts
       MCP_CONFIG: /app/config/commands.yaml
+      QUICKWIT_URL: http://quickwit:7280
+      CHAT_INDEX_ID: ${CHAT_INDEX_ID:-chat-history-v1}
+      CHAT_HISTORY_OWNER: ${CHAT_HISTORY_OWNER:-local}
     volumes:
       - ./config:/app/config:ro
       - ${SSH_KEY_FILE:-./.ssh/mcp}:/app/ssh/id_ed25519:ro
@@ -23,7 +26,44 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
-    networks: [backend]
+    networks: [backend, chat_search]
+
+  quickwit:
+    image: ${QUICKWIT_IMAGE:-quickwit/quickwit:0.9.0}
+    restart: unless-stopped
+    command: ["run"]
+    environment:
+      QW_ENABLE_TELEMETRY: "false"
+    volumes:
+      - ./data/quickwit:/quickwit/qwdata
+    expose:
+      - "7280"
+    healthcheck:
+      test: ["CMD", "quickwit", "index", "list"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+    networks: [chat_search]
+
+  chat-indexer:
+    build:
+      context: .
+      dockerfile: chat_indexer/Dockerfile
+    restart: unless-stopped
+    environment:
+      QUICKWIT_URL: http://quickwit:7280
+      CHAT_INDEX_ID: ${CHAT_INDEX_ID:-chat-history-v1}
+      CHAT_SCAN_SECONDS: ${CHAT_SCAN_SECONDS:-30}
+    volumes:
+      - ./config/chat-sources.yaml:/config/chat-sources.yaml:ro
+      - ./config/chat-history-index.yaml:/config/chat-history-index.yaml:ro
+      - ./data/codex:/sources/codex:ro
+      - ./data/opencode:/sources/opencode:ro
+      - ./data/chat-indexer:/state
+    depends_on:
+      quickwit:
+        condition: service_healthy
+    networks: [chat_search]
 
   codex:
     environment:
@@ -130,3 +170,5 @@ services:
 networks:
   backend:
   grafana_clients:
+  chat_search:
+    internal: true
