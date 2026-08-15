@@ -38,7 +38,7 @@ services:
       - ./data/codex:/root/.codex
       - ./workspace:/workspace
       - ./config/codex.toml:/opt/codex/config.toml:ro
-    networks: [backend]
+    networks: [backend, grafana_clients]
 
   opencode:
     environment:
@@ -56,7 +56,30 @@ services:
       - ./data/opencode:/opencode
       - ./workspace:/workspace
       - ./config/opencode.json:/opt/opencode/opencode.json:ro
-    networks: [backend]
+    networks: [backend, grafana_clients]
+
+  grafana-mcp:
+    image: ${GRAFANA_MCP_IMAGE:-grafana/mcp-grafana@sha256:f21a19cebbfa7c3a76ef1746171e5ffc3601064e432f593e7c6cb526e5216e5f}
+    profiles: [grafana]
+    restart: unless-stopped
+    command:
+      - "-t"
+      - "streamable-http"
+      - "--address"
+      - ":8000"
+      - "--endpoint-path"
+      - "/mcp"
+      - "--disable-write"
+      - "--max-loki-log-limit"
+      - "200"
+    environment:
+      GRAFANA_URL: ${GRAFANA_URL:-}
+      GRAFANA_SERVICE_ACCOUNT_TOKEN_FILE: /run/secrets/grafana_service_account_token
+    secrets:
+      - grafana_service_account_token
+    expose:
+      - "8000"
+    networks: [grafana_clients]
 
   web-ui:
     build:
@@ -101,3 +124,8 @@ services:
 
 networks:
   backend:
+  grafana_clients:
+
+secrets:
+  grafana_service_account_token:
+    file: ${GRAFANA_TOKEN_FILE:-./data/grafana/service-account-token}

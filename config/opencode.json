@@ -7,6 +7,13 @@
       "enabled": true,
       "oauth": false,
       "timeout": 120000
+    },
+    "grafana": {
+      "type": "remote",
+      "url": "http://grafana-mcp:8000/mcp",
+      "enabled": true,
+      "oauth": false,
+      "timeout": 120000
     }
   }
 }

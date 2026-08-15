@@ -47,6 +47,36 @@ docker compose exec opencode opencode mcp list
 
 Everything OpenCode owns is persisted beneath `./data/opencode`: `opencode.json`, provider credentials, MCP credentials, sessions, logs, and cache. On first startup, [config/opencode.json](config/opencode.json) is copied to `./data/opencode/opencode.json`. That persistent copy is authoritative afterward, so edit it directly for later configuration changes.
 
+## Grafana Cloud MCP
+
+The optional `grafana-mcp` service uses a digest-pinned official Grafana MCP image in Streamable HTTP, read-only mode. It is isolated on a client-only Compose network shared with Codex and OpenCode, and is configured in both clients as `grafana`.
+
+Create a dedicated Grafana service account with only the datasource/dashboard permissions the agents need. Save its token in a gitignored file rather than `.env`:
+
+```sh
+mkdir -p data/grafana
+printf '%s' 'glsa_your_service_account_token' > data/grafana/service-account-token
+chmod 600 data/grafana/service-account-token
+```
+
+Set your stack URL in `.env`:
+
+```env
+GRAFANA_URL=https://your-stack.grafana.net
+GRAFANA_TOKEN_FILE=./data/grafana/service-account-token
+```
+
+Start the optional profile and recreate the clients so they reconnect:
+
+```sh
+docker compose --profile grafana up -d grafana-mcp
+docker compose restart codex opencode
+docker compose exec codex codex mcp list
+docker compose exec opencode opencode mcp list
+```
+
+The endpoint is `http://grafana-mcp:8000/mcp` and is not published to the host. `--disable-write` prevents MCP write operations even if the Grafana service account has broader permissions. Loki responses are limited to 200 lines. Ask an agent, for example: `Use the grafana MCP server to query Loki for {job="uvoo.io"} over the last hour.`
+
 ## Web command console
 
 The browser UI talks to the MCP server as an MCP client; it does not execute commands itself. Caddy is the only published service and provides HTTPS plus hashed basic authentication.
