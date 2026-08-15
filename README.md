@@ -21,7 +21,7 @@ chmod 600 .ssh/mcp
 chmod 644 .ssh/known_hosts
 docker compose build
 docker compose up -d
-docker compose exec codex codex login
+docker compose exec codex codex login --device-auth
 docker compose exec codex codex
 ```
 

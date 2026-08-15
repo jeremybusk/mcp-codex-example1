@@ -4,3 +4,4 @@ data/
 workspace/
 __pycache__/
 *.pyc
+trash/

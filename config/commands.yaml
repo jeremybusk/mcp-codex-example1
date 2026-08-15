@@ -43,3 +43,13 @@ commands:
         min: 1
         max: 500
         default: 100
+
+  process_list:
+    enabled: true
+    description: List all processes with full details.
+    argv: ["/usr/bin/ps", "-eaf"]
+
+  postgres_processes:
+    enabled: true
+    description: List PostgreSQL processes.
+    argv: ["/usr/bin/pgrep", "-a", "-u", "postgres"]
