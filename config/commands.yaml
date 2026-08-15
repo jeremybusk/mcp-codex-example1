@@ -67,7 +67,7 @@ commands:
     argv: ["/usr/bin/pgrep", "-a", "-u", "postgres"]
 
   bash:
-    enabled: false
+    enabled: true
     description: Run an arbitrary Bash script. This permits unrestricted remote execution.
     risk: write
     confirmation: true

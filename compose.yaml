@@ -13,7 +13,7 @@ services:
       SSH_KNOWN_HOSTS: /app/ssh/known_hosts
       MCP_CONFIG: /app/config/commands.yaml
     volumes:
-      - ./config/commands.yaml:/app/config/commands.yaml:ro
+      - ./config:/app/config:ro
       - ${SSH_KEY_FILE:-./.ssh/mcp}:/app/ssh/id_ed25519:ro
       - ${SSH_KNOWN_HOSTS_FILE:-./.ssh/known_hosts}:/app/ssh/known_hosts:ro
     expose:

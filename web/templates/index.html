@@ -17,6 +17,8 @@
       </select>
     {% elif rule["type"] == "integer" %}
       <input id="{{ command.name }}_{{ name }}" name="param_{{ name }}" type="number" min="{{ rule.get('min', '') }}" max="{{ rule.get('max', '') }}" value="{{ rule.get('default', '') }}" {% if "default" not in rule %}required{% endif %}>
+    {% elif rule.get("max_length", 128) > 512 %}
+      <textarea id="{{ command.name }}_{{ name }}" name="param_{{ name }}" rows="7" {% if "default" not in rule %}required{% endif %}>{{ rule.get('default', '') }}</textarea>
     {% else %}
       <input id="{{ command.name }}_{{ name }}" name="param_{{ name }}" value="{{ rule.get('default', '') }}" {% if "default" not in rule %}required{% endif %}>
     {% endif %}
