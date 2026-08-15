@@ -5,6 +5,7 @@ A small Docker Compose stack containing:
 - a private MCP server with bounded, read-only PostgreSQL queries;
 - YAML-allowlisted commands executed on one Linux host over SSH; and
 - Codex CLI with persistent authentication, configuration, and conversation state.
+- OpenCode CLI as an alternative MCP client with persistent configuration and sessions.
 - an HTTPS web console for executing the same allowlisted commands without Codex.
 
 The MCP port is only available on the Compose network (it is not published to the host). The network retains outbound access so the MCP container can reach SSH and PostgreSQL targets. Remote commands use fixed argv templates, typed parameters, strict host-key checking, and no user-supplied shell command.
@@ -29,6 +30,22 @@ docker compose exec codex codex
 Set the real host and database values in `.env`. `SSH_KEY_FILE` and `SSH_KNOWN_HOSTS_FILE` are host paths and default to files in `./.ssh`. Verify the SSH fingerprint out of band before trusting the `ssh-keyscan` result.
 
 Codex state is bind-mounted at `./data/codex`, including its login and local session history. The working directory is `./workspace`. Both are gitignored and survive container replacement.
+
+## OpenCode client
+
+OpenCode is available as an alternative to Codex and connects to the same `infra` MCP server:
+
+```sh
+docker compose exec opencode opencode
+```
+
+Use `/connect` inside OpenCode to authenticate an LLM provider, then ask it to use the `infra` MCP tools. Verify connectivity with:
+
+```sh
+docker compose exec opencode opencode mcp list
+```
+
+Everything OpenCode owns is persisted beneath `./data/opencode`: `opencode.json`, provider credentials, MCP credentials, sessions, logs, and cache. On first startup, [config/opencode.json](config/opencode.json) is copied to `./data/opencode/opencode.json`. That persistent copy is authoritative afterward, so edit it directly for later configuration changes.
 
 ## Web command console
 

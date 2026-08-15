@@ -40,6 +40,21 @@ services:
       - ./config/codex.toml:/opt/codex/config.toml:ro
     networks: [backend]
 
+  opencode:
+    build:
+      context: .
+      dockerfile: Dockerfile.opencode
+    stdin_open: true
+    tty: true
+    depends_on:
+      mcp-server:
+        condition: service_healthy
+    volumes:
+      - ./data/opencode:/opencode
+      - ./workspace:/workspace
+      - ./config/opencode.json:/opt/opencode/opencode.json:ro
+    networks: [backend]
+
   web-ui:
     build:
       context: .
