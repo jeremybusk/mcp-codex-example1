@@ -13,6 +13,9 @@
       "url": "http://grafana-mcp:8000/mcp",
       "enabled": true,
       "oauth": false,
+      "headers": {
+        "Authorization": "Bearer {env:GRAFANA_MCP_SERVER_TOKEN}"
+      },
       "timeout": 120000
     }
   }

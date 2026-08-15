@@ -51,19 +51,13 @@ Everything OpenCode owns is persisted beneath `./data/opencode`: `opencode.json`
 
 The optional `grafana-mcp` service uses a digest-pinned official Grafana MCP image in Streamable HTTP, read-only mode. It is isolated on a client-only Compose network shared with Codex and OpenCode, and is configured in both clients as `grafana`.
 
-Create a dedicated Grafana service account with only the datasource/dashboard permissions the agents need. Save its token in a gitignored file rather than `.env`:
-
-```sh
-mkdir -p data/grafana
-printf '%s' 'glsa_your_service_account_token' > data/grafana/service-account-token
-chmod 600 data/grafana/service-account-token
-```
-
-Set your stack URL in `.env`:
+Create a dedicated Grafana service account with only the datasource/dashboard permissions the agents need. Configure the account metadata and token in the gitignored `.env`:
 
 ```env
-GRAFANA_URL=https://your-stack.grafana.net
-GRAFANA_TOKEN_FILE=./data/grafana/service-account-token
+GRAFANA_URL=https://curiousmustard3132.grafana.net/
+GF_SERVICE_ACCOUNT_NAME=grafana-mcp
+GF_SERVICE_ACCOUNT_TOKEN=glsa_your_service_account_token
+GRAFANA_MCP_SERVER_TOKEN=generate-a-separate-value-with-openssl-rand-hex-32
 ```
 
 Start the optional profile and recreate the clients so they reconnect:
@@ -75,7 +69,7 @@ docker compose exec codex codex mcp list
 docker compose exec opencode opencode mcp list
 ```
 
-The endpoint is `http://grafana-mcp:8000/mcp` and is not published to the host. `--disable-write` prevents MCP write operations even if the Grafana service account has broader permissions. Loki responses are limited to 200 lines. Ask an agent, for example: `Use the grafana MCP server to query Loki for {job="uvoo.io"} over the last hour.`
+The endpoint is `http://grafana-mcp:8000/mcp` and is not published to the host. Compose maps `GF_SERVICE_ACCOUNT_TOKEN` to the official container's `GRAFANA_SERVICE_ACCOUNT_TOKEN`; the account name is retained for operator identification but token authentication does not require a username. A separate `GRAFANA_MCP_SERVER_TOKEN` authenticates Codex and OpenCode to the MCP endpoint; generate one with `openssl rand -hex 32`. `--disable-write` prevents MCP write operations even if the Grafana service account has broader permissions. Loki responses are limited to 200 lines. Ask an agent, for example: `Use the grafana MCP server to query Loki for {job="uvoo.io"} over the last hour.`
 
 ## Web command console
 

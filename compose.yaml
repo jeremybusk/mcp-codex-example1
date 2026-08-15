@@ -26,6 +26,8 @@ services:
     networks: [backend]
 
   codex:
+    environment:
+      GRAFANA_MCP_SERVER_TOKEN: ${GRAFANA_MCP_SERVER_TOKEN:?Set GRAFANA_MCP_SERVER_TOKEN in .env}
     build:
       context: .
       dockerfile: Dockerfile.codex
@@ -44,6 +46,7 @@ services:
     environment:
       OPENAI_API_KEY: ${OPENAI_API_KEY:?Set OPENAI_API_KEY in .env}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:?Set OPENAI_BASE_URL in .env}
+      GRAFANA_MCP_SERVER_TOKEN: ${GRAFANA_MCP_SERVER_TOKEN:?Set GRAFANA_MCP_SERVER_TOKEN in .env}
     build:
       context: .
       dockerfile: Dockerfile.opencode
@@ -69,14 +72,16 @@ services:
       - ":8000"
       - "--endpoint-path"
       - "/mcp"
+      - "--allowed-hosts"
+      - "grafana-mcp:8000"
       - "--disable-write"
       - "--max-loki-log-limit"
       - "200"
     environment:
-      GRAFANA_URL: ${GRAFANA_URL:-}
-      GRAFANA_SERVICE_ACCOUNT_TOKEN_FILE: /run/secrets/grafana_service_account_token
-    secrets:
-      - grafana_service_account_token
+      GRAFANA_URL: ${GRAFANA_URL:-https://curiousmustard3132.grafana.net/}
+      GRAFANA_SERVICE_ACCOUNT_TOKEN: ${GF_SERVICE_ACCOUNT_TOKEN:?Set GF_SERVICE_ACCOUNT_TOKEN in .env}
+      GF_SERVICE_ACCOUNT_NAME: ${GF_SERVICE_ACCOUNT_NAME:-grafana-mcp}
+      MCP_GRAFANA_SERVER_TOKEN: ${GRAFANA_MCP_SERVER_TOKEN:?Set GRAFANA_MCP_SERVER_TOKEN in .env}
     expose:
       - "8000"
     networks: [grafana_clients]
@@ -125,7 +130,3 @@ services:
 networks:
   backend:
   grafana_clients:
-
-secrets:
-  grafana_service_account_token:
-    file: ${GRAFANA_TOKEN_FILE:-./data/grafana/service-account-token}
