@@ -1,0 +1,12 @@
+FROM node:22-bookworm-slim
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends git openssh-client ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && npm install --global @openai/codex
+COPY docker/codex-entrypoint.sh /usr/local/bin/codex-entrypoint
+RUN chmod 755 /usr/local/bin/codex-entrypoint
+ENV CODEX_HOME=/root/.codex
+WORKDIR /workspace
+ENTRYPOINT ["codex-entrypoint"]
+CMD ["sleep", "infinity"]

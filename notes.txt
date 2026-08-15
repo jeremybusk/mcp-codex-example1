@@ -1,0 +1,3 @@
+ssh -i mcp mcp@mcp-testhost1
+psql -U mcp -h mcp-testhost1 postgres
+ssh-keyscan -H mcp-testhost1 >> known_hosts

@@ -1,0 +1,7 @@
+[mcp_servers.infra]
+url = "http://mcp-server:8000/mcp"
+startup_timeout_sec = 20
+tool_timeout_sec = 120
+
+[projects."/workspace"]
+trust_level = "trusted"

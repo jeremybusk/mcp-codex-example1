@@ -1,0 +1,7 @@
+.git
+.env
+.ssh
+data
+workspace
+__pycache__
+*.pyc

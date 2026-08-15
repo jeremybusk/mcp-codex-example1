@@ -1,0 +1,45 @@
+settings:
+  max_output_bytes: 65536
+
+database:
+  enabled: true
+  max_rows: 200
+  max_query_bytes: 10000
+  statement_timeout_ms: 5000
+
+# Only enabled entries are exposed. argv is never passed to a local shell.
+# Use absolute paths as they exist on the remote Ubuntu host.
+commands:
+  uptime:
+    enabled: true
+    description: Show server uptime and load.
+    argv: ["/usr/bin/uptime"]
+
+  disk_usage:
+    enabled: true
+    description: Show filesystem free space.
+    argv: ["/usr/bin/df", "-h", "--output=source,fstype,size,used,avail,pcent,target"]
+
+  service_status:
+    enabled: true
+    description: Show status for one explicitly permitted systemd service.
+    argv: ["/usr/bin/sudo", "-n", "/usr/bin/systemctl", "status", "{service}", "--no-pager"]
+    timeout: 20
+    parameters:
+      service:
+        type: enum
+        values: ["nginx", "postgresql", "ssh"]
+
+  journal:
+    enabled: false
+    description: Read recent logs for an explicitly permitted service.
+    argv: ["/usr/bin/sudo", "-n", "/usr/bin/journalctl", "-u", "{service}", "-n", "{lines}", "--no-pager"]
+    parameters:
+      service:
+        type: enum
+        values: ["nginx", "postgresql", "ssh"]
+      lines:
+        type: integer
+        min: 1
+        max: 500
+        default: 100

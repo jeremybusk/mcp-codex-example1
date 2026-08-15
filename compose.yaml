@@ -1,0 +1,44 @@
+services:
+  mcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.mcp
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-}
+      SSH_HOST: ${SSH_HOST:-}
+      SSH_PORT: ${SSH_PORT:-22}
+      SSH_USER: ${SSH_USER:-ubuntu}
+      SSH_KEY: /app/ssh/id_ed25519
+      SSH_KNOWN_HOSTS: /app/ssh/known_hosts
+      MCP_CONFIG: /app/config/commands.yaml
+    volumes:
+      - ./config/commands.yaml:/app/config/commands.yaml:ro
+      - ${SSH_KEY_FILE:-./.ssh/mcp}:/app/ssh/id_ed25519:ro
+      - ${SSH_KNOWN_HOSTS_FILE:-./.ssh/known_hosts}:/app/ssh/known_hosts:ro
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket;s=socket.create_connection(('127.0.0.1',8000),2);s.close()"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks: [backend]
+
+  codex:
+    build:
+      context: .
+      dockerfile: Dockerfile.codex
+    stdin_open: true
+    tty: true
+    depends_on:
+      mcp-server:
+        condition: service_healthy
+    volumes:
+      - ./data/codex:/root/.codex
+      - ./workspace:/workspace
+      - ./config/codex.toml:/opt/codex/config.toml:ro
+    networks: [backend]
+
+networks:
+  backend:
