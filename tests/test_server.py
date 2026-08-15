@@ -70,3 +70,23 @@ def test_chat_query_quotes_metadata_and_text(monkeypatch):
     assert 'owner:"local"' in query
     assert 'text:"owner:other OR *"' in query
     assert 'source:"codex-local"' in query
+
+
+def test_session_query_has_no_text_wildcard(monkeypatch):
+    captured = {}
+
+    class Response:
+        def __enter__(self): return self
+        def __exit__(self, *_): pass
+        def read(self): return b'{"hits": []}'
+
+    def fake_open(request, timeout):
+        captured["payload"] = __import__("json").loads(request.data)
+        return Response()
+
+    monkeypatch.setattr(server, "QUICKWIT_URL", "http://quickwit:7280")
+    monkeypatch.setattr(server.urllib.request, "urlopen", fake_open)
+    server._chat_search("*", source="opencode-local", session_id="session-1")
+    query = captured["payload"]["query"]
+    assert "text:" not in query
+    assert 'session_id:"session-1"' in query

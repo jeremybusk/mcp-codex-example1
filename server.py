@@ -140,8 +140,11 @@ def _chat_search(query: str, source: str = "", role: str = "", session_id: str =
         raise ValueError("role must be user or assistant")
 
     # Quote user text so it cannot inject field filters or expensive query operators.
-    text_clause = "text:*" if query == "*" else f"text:{_query_term(query)}"
-    clauses = [f"owner:{_query_term(CHAT_HISTORY_OWNER)}", text_clause]
+    clauses = [f"owner:{_query_term(CHAT_HISTORY_OWNER)}"]
+    # `*` is used internally by get_chat_session to mean no text constraint.
+    # Quickwit does not interpret `text:*` as a reliable field-existence query.
+    if query != "*":
+        clauses.append(f"text:{_query_term(query)}")
     if source: clauses.append(f"source:{_query_term(source)}")
     if role: clauses.append(f"role:{_query_term(role)}")
     if session_id: clauses.append(f"session_id:{_query_term(session_id)}")
